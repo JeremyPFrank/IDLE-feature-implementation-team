@@ -31,6 +31,7 @@ import threading
 import time
 import tokenize
 import warnings
+import re
 
 from idlelib.colorizer import ColorDelegator
 from idlelib.config import idleConf
@@ -891,6 +892,7 @@ class PyShell(OutputWindow):
         self.shell_sidebar = None  # initialized below
 
         OutputWindow.__init__(self, flist, None, None)
+        self.text.tag_configure('traceback_lineno', underline=True, foreground='red') # added a tag for the traceback
 
         self.usetabs = False
         # indentwidth must be 8 when using tabs.  See note in EditorWindow:
@@ -1414,19 +1416,25 @@ class PyShell(OutputWindow):
         self.ctip.remove_calltip_window()
 
     def write(self, s, tags=()):
-        try:
-            self.text.mark_gravity("iomark", "right")
-            count = OutputWindow.write(self, s, tags, "iomark")
-            self.text.mark_gravity("iomark", "left")
-        except:
-            raise ###pass  # ### 11Aug07 KBK if we are expecting exceptions
-                           # let's find out what they are and be specific.
+        traceback_line_re = re.compile(r'(  File ".*?", )(line \d+)(, in .*)')
+        lines = s.splitlines(keepends=True)
+        for line in lines:
+            trace_match = traceback_line_re.match(line)
+            if trace_match:
+                file_part, line_part, context_part = trace_match.groups()
+                self.text.insert('end', file_part, tags)
+                self.text.insert('end', line_part, ('traceback_lineno',))
+                self.text.insert('end', context_part + ('\n' if line.endswith('\n') else ''), tags)
+            else:
+                self.text.insert('end', line, tags)
+        self.text.see('end')
+        count = len(s)
         if self.canceled:
             self.canceled = False
             if not use_subprocess:
                 raise KeyboardInterrupt
         return count
-
+    
     def rmenu_check_cut(self):
         try:
             if self.text.compare('sel.first', '<', 'iomark'):
