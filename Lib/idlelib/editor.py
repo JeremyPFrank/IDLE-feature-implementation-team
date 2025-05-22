@@ -769,9 +769,8 @@ class EditorWindow:
             line_end = error_line + ".end"
             self.text.tag_add("error_underline", line_start, line_end)
             self.error_calltip = CalltipWindow(self.text)
-            self.error_calltip.showtip("Syntax error on line " + error_line
-                                       + ":\n" + error_msg, line_start, line_end)
-        self.text.edit_modified(False) #Allows check_signal_event to be triggered after the method is finished
+            self.error_calltip.showtip("Syntax error:\n" + error_msg, line_start, line_end)
+        self.text.edit_modified(False) #Allows check_signal_event to be triggered
 
     def open_module(self):
         """Get module name from user and open it.
