@@ -765,8 +765,10 @@ class EditorWindow:
         except SyntaxError as error:
             error_line = str(error.lineno)
             error_msg = error.msg
-            line_start = error_line + ".0"
             line_end = error_line + ".end"
+            line_text = self.text.get(error_line + ".0", line_end)
+            whitespace_offset = int(len(line_text)) - int(len(line_text.lstrip())) 
+            line_start = error_line + "." + str(whitespace_offset)         
             self.text.tag_add("error_underline", line_start, line_end)
             self.error_calltip = CalltipWindow(self.text)
             self.error_calltip.showtip("Syntax error:\n" + error_msg, line_start, line_end)
