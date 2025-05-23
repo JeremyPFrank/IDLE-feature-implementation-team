@@ -40,7 +40,7 @@ from idlelib import debugger
 from idlelib import debugger_r
 from idlelib.editor import EditorWindow, fixwordbreaks
 from idlelib.filelist import FileList
-from idlelib.outwin import OutputWindow
+from idlelib.outwin import OutputWindow, file_line_helper
 from idlelib import replace
 from idlelib import rpc
 from idlelib.run import idle_formatwarning, StdInputFile, StdOutputFile
@@ -130,6 +130,7 @@ class PyShellEditorWindow(EditorWindow):
         EditorWindow.__init__(self, *args)
         self.text.bind("<<set-breakpoint>>", self.set_breakpoint_event)
         self.text.bind("<<clear-breakpoint>>", self.clear_breakpoint_event)
+        self.text.bind("<<predict-error>>", self.predict_error_event)
         self.text.bind("<<open-python-shell>>", self.flist.open_shell)
 
         #TODO: don't read/write this from/to .idlerc when testing
@@ -151,7 +152,8 @@ class PyShellEditorWindow(EditorWindow):
         ("Paste", "<<paste>>", "rmenu_check_paste"),
         (None, None, None),
         ("Set Breakpoint", "<<set-breakpoint>>", None),
-        ("Clear Breakpoint", "<<clear-breakpoint>>", None)
+        ("Clear Breakpoint", "<<clear-breakpoint>>", None),
+        ("Predict Error Line", "<<predict-error>>", None)
     ]
 
     def color_breakpoint_text(self, color=True):
@@ -207,6 +209,10 @@ class PyShellEditorWindow(EditorWindow):
             debug.clear_breakpoint(filename, lineno)
         except:
             pass
+        
+    def predict_error_event(self, event=None):
+        self.flist.pyshell.predicterror()
+        self.text.focus_set()
 
     def clear_file_breaks(self):
         if self.breakpoints:
@@ -1435,6 +1441,27 @@ class PyShell(OutputWindow):
                 raise KeyboardInterrupt
         return count
     
+    def predicterror(self):
+        """Identify last line of the stack trace and take user to it"""
+        traceback_text = self.text.get("1.0", "end-1c")
+        lines = traceback_text.splitlines()
+        for line in reversed(lines):
+            if line.strip().startswith("File") and "line" in line:
+                result = file_line_helper(line)
+                print(f"Last stack trace line: {line}")
+                if not result:
+                    break
+                filename, lineno = result
+                self.flist.gotofileline(filename, lineno)
+
+                return
+        self.showerror(
+            "Error Line Prediction Failed",
+            "Running the code may increase prediction ability\n\n"
+            "But sometimes you have to debug for yourself :(",
+            parent=self.text)
+        return
+
     def rmenu_check_cut(self):
         try:
             if self.text.compare('sel.first', '<', 'iomark'):
