@@ -1448,7 +1448,6 @@ class PyShell(OutputWindow):
         for line in reversed(lines):
             if line.strip().startswith("File") and "line" in line:
                 result = file_line_helper(line)
-                print(f"Last stack trace line: {line}")
                 if not result:
                     break
                 filename, lineno = result
