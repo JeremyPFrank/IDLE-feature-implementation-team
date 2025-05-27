@@ -103,6 +103,7 @@ menudefs = [
    ('Show _Code Context', '<<toggle-code-context>>'),
    ('Show _Line Numbers', '<<toggle-line-numbers>>'),
    ('_Zoom Height', '<<zoom-height>>'),
+   ('Open _Manual Debugger', "<<open-manual-debug>>"),
    ]),
 
  ('window', [
