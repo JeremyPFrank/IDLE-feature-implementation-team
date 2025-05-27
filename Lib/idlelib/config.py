@@ -586,7 +586,7 @@ class IdleConf:
         '<<force-open-completions>>', '<<expand-word>>',
         '<<force-open-calltip>>', '<<flash-paren>>', '<<format-paragraph>>',
          '<<run-module>>', '<<check-module>>', '<<zoom-height>>',
-         '<<run-custom>>','<<goto-file-line>>',
+         '<<run-custom>>',
          }
 
     def GetCoreKeys(self, keySetName=None):
@@ -659,7 +659,6 @@ class IdleConf:
             '<<run-custom>>': ['<Shift-Key-F5>'],
             '<<check-module>>': ['<Alt-Key-x>'],
             '<<zoom-height>>': ['<Alt-Key-2>'],
-            '<<goto-file-line>>': ['<Control-Button-1>'],
             }
 
         if keySetName:
