@@ -129,9 +129,11 @@ class OutputWindow(EditorWindow):
 
     def goto_file_line(self, event=None):
         """Handle request to open file/line.
+
         If the selected or previous line in the output window
         contains a file name and line number, then open that file
         name in a new window and position on the line number.
+
         Otherwise, display an error messagebox.
         """
         line = self.text.get("insert linestart", "insert lineend")
