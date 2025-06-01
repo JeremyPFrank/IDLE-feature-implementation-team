@@ -238,7 +238,6 @@ class RMenuTest(unittest.TestCase):
 
 class SyntaxUnderline(unittest.TestCase):
     
-    
     @classmethod
     def setUpClass(cls):
         requires('gui')
