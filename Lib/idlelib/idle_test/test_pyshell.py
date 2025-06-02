@@ -2,9 +2,12 @@
 # Plus coverage of test_warning.  Was 20% with test_openshell.
 
 from idlelib import pyshell
+from idlelib.pyshell import PyShell 
 import unittest
 from test.support import requires
 from tkinter import Tk
+from unittest import mock
+import idlelib.pyshell as pyshell_mod
 
 
 class FunctionTest(unittest.TestCase):
@@ -142,6 +145,57 @@ class PyShellRemoveLastNewlineAndSurroundingWhitespaceTest(unittest.TestCase):
         self.check_result('\v\n', '\v')
         self.none_removed(' \n\v')
         self.check_result('\v\n ', '\v')
+
+
+class WriteMethodTest(unittest.TestCase):
+    def setUp(self):
+        self.shell = PyShell.__new__(PyShell)
+        self.shell.text = mock.Mock()
+        self.shell.canceled = False
+        
+    def test_write_normal_line(self):
+        line = 'This is a normal line of text.\n'
+        result = self.shell.write(line)
+        # Should insert the line with no special tags
+        self.shell.text.insert.assert_called_with('end', line, ())
+        self.shell.text.see.assert_called_with('end')
+        self.assertEqual(result, len(line))
+        
+    def test_write_empty_line(self):
+        line = '\n'
+        result = self.shell.write(line)
+        self.shell.text.insert.assert_called_with('end', line, ())
+        self.shell.text.see.assert_called_with('end')
+        self.assertEqual(result, len(line))
+        
+    def test_write_canceled(self):
+        self.shell.canceled = True
+        # Should reset canceled and raise KeyboardInterrupt
+        with mock.patch.object(pyshell_mod, 'use_subprocess', False):
+            with self.assertRaises(KeyboardInterrupt):
+                self.shell.write('test\n')
+        self.assertFalse(self.shell.canceled)    
+        
+    def test_write_traceback_line(self):
+        # Simulate a traceback line
+        line = '  File "foo.py", line 42, in <module>\n'
+        result = self.shell.write(line)
+        self.shell.text.insert.assert_any_call('end', '  File "foo.py", ', ())
+        self.shell.text.insert.assert_any_call('end', 'line 42', ('traceback_lineno',))
+        self.shell.text.insert.assert_any_call('end', ', in <module>\n', ())
+        self.shell.text.see.assert_called_with('end')
+        self.assertEqual(result, len(line))
+
+    def test_write_real_traceback(self):
+        # Simulate a real Python traceback line
+        line = '  File "/home/willi/individual-projects-wshare26/error.py", line 2, in error\n'
+        result = self.shell.write(line)
+        self.shell.text.insert.assert_any_call('end', '  File "/home/willi/individual-projects-wshare26/error.py", ', ())
+        self.shell.text.insert.assert_any_call('end', 'line 2', ('traceback_lineno',))
+        self.shell.text.insert.assert_any_call('end', ', in error\n', ())
+        self.shell.text.see.assert_called_with('end')
+        self.assertEqual(result, len(line))
+        
 
 
 if __name__ == '__main__':

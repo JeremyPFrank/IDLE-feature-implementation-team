@@ -136,6 +136,44 @@ class OutputWindowTest(unittest.TestCase):
         eq(gfl.args, (str(__file__), 42))
 
         del w.flist.gotofileline, w.showerror
+    
+    def test_goto_file_line_updated(self):
+        eq = self.assertEqual
+        w = self.window
+        text = self.text
+
+        w.flist = mock.Mock()
+        gfl = w.flist.gotofileline = Func()
+        showerror = w.showerror = Mbox_func()
+
+        # Helper method to create a mock event
+        def make_event(num=1, x=0, y=0):
+            e = mock.Mock()
+            e.num = num
+            e.x = x
+            e.y = y
+            return e
+
+        # No file/line number, not left click, should show error
+        w.write('Not a file line')
+        self.assertIsNone(w.goto_file_line(make_event(num=2)))
+        eq(gfl.called, 0)
+        eq(showerror.title, 'No special line')
+
+        # Current file/line number, left click
+        w.write(f'{str(__file__)}: 42: spam\n')
+        w.write(f'{str(__file__)}: 21: spam')
+        self.assertIsNone(w.goto_file_line(make_event(num=1, x=5, y=5)))
+        eq(gfl.args, (str(__file__), 21))
+
+        # Previous line has file/line number, left click
+        text.delete('1.0', 'end')
+        w.write(f'{str(__file__)}: 42: spam\n')
+        w.write('Not a file line')
+        self.assertIsNone(w.goto_file_line(make_event(num=1, x=5, y=5)))
+        eq(gfl.args, (str(__file__), 42))
+
+        del w.flist.gotofileline, w.showerror
 
 
 class ModuleFunctionTest(unittest.TestCase):

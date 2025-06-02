@@ -584,6 +584,13 @@ class IdleConfTest(unittest.TestCase):
            ['<Alt-Key-n>', '<Meta-Key-n>'])
         eq(conf.GetCoreKeys('IDLE Modern Unix')['<<history-next>>'],
             ['<Alt-Key-n>', '<Meta-Key-n>'])
+        
+    def test_goto_file_line_core_key(self):
+        conf = self.mock_config()
+        eq = self.assertEqual
+        # Test keybinding for goto-file-line
+        eq(conf.GetCoreKeys()['<<goto-file-line>>'], ['<Control-Button-1>'])
+    
 
 
 class CurrentColorKeysTest(unittest.TestCase):
