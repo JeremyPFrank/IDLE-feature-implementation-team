@@ -104,7 +104,6 @@ class ManualDebug(Toplevel):
         """Check for valid line numbers in the debug window text box.
         Text must be a valid line number in the code."""
         max_lines = int(self.parent.index('end-1c').split('.')[0])
-        print(max_lines)  # Debugging line, can be removed later)
         if lineno.isdigit() and int(lineno) >= 1 and int(lineno) <= max_lines:
             return True
         return False
