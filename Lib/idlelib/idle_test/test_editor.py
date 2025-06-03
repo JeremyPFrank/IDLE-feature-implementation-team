@@ -236,6 +236,116 @@ class RMenuTest(unittest.TestCase):
     def test_rclick(self):
         pass
 
+class SyntaxUnderline(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        requires('gui')
+        cls.root = Tk()
+        cls.root.withdraw()
+        cls.window = Editor(root=cls.root)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.window._close()
+        del cls.window
+        cls.root.update_idletasks()
+        for id in cls.root.tk.call('after', 'info'):
+            cls.root.after_cancel(id)
+        cls.root.destroy()
+        del cls.root
+    
+    def tearDown(self):
+        self.window.text.delete("1.0","end")
+        if hasattr(self.window, "write"):
+            delattr(self.window, "write") 
+        if hasattr(self.window, "error_calltip"): 
+            delattr(self.window, "error_calltip")
+
+    def test_has_writeAttribute(self):
+        """ Tests behavior when self.window has 'write' attribute 
+            (should not underline errors)
+        """
+        text = self.window.text
+        self.window.write = True
+        error_code = "print('hi\n"
+        text.insert("1.0", error_code)
+        self.window.check_syntax()
+        for i in range(len(error_code)):
+            expected_error_tag = text.tag_names("1." + str(i))
+            self.assertNotIn("error_underline", expected_error_tag)
+        self.tearDown()
+        return
+
+    def test_run_multiple(self):
+        """ Tests behavior when multiple runs of check_syntax()"""
+        text = self.window.text
+        error_code = "print('hi\n"
+        text.insert("1.0", error_code)
+        self.window.check_syntax()
+        expected_error_tag = text.tag_names("1.8")  # Position of syntax error in error_code
+        self.assertIn("error_underline", expected_error_tag)
+        self.window.check_syntax()
+        expected_error_tag = text.tag_names("1.8")  
+        self.assertIn("error_underline", expected_error_tag)
+        self.tearDown()
+        return
+
+    def test_calltip_exists(self):
+        """ Tests behavior when a calltip window is already open when function runs"""
+        text = self.window.text
+        error_code = "print('hi\n"
+        text.insert("1.0", error_code)
+        self.window.error_calltip = DummyCalltip()
+        self.window.check_syntax()
+        self.assertIsNotNone(self.window.error_calltip)
+        expected_error_tag = text.tag_names("1.8")  # Position of syntax error in error_code
+        self.assertIn("error_underline", expected_error_tag)
+        self.tearDown()
+        return
+
+    def test_noError(self):
+        """ Test behavior when there is no syntax error """
+        text = self.window.text
+        error_code = "print('hi')\n"
+        text.insert("1.0", error_code)
+        self.window.check_syntax()
+        for i in range(len(error_code)):
+            expected_error_tag = text.tag_names("1." + str(i))
+            self.assertNotIn("error_underline", expected_error_tag)
+        self.tearDown()
+        return
+    
+    def test_syntaxError(self):
+        """ test simple behavior when there is a syntax error """
+        text = self.window.text
+        error_code = "print('hi\n"
+        text.insert("1.0", error_code)
+        self.window.check_syntax()
+        expected_error_tag = text.tag_names("1.8")  # Position of syntax error in error_code
+        self.assertIn("error_underline", expected_error_tag)
+        self.tearDown()
+        return
+    
+    def test_errormessage_calltip(self):
+        """ test that calltip is created when there is an error 
+            and that message is correct
+        """
+        text = self.window.text
+        error_code = "print('hi\n"
+        text.insert("1.0", error_code)
+        self.window.check_syntax()
+        self.assertIsNotNone(self.window.error_calltip)
+        self.assertIn("unterminated string literal", self.window.error_calltip.text)
+        self.tearDown()
+        return
+
+class DummyCalltip():
+        def __init__(self):
+            pass
+
+        def hidetip(self):
+            return
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
