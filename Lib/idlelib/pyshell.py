@@ -31,7 +31,6 @@ import threading
 import time
 import tokenize
 import warnings
-import re
 
 from idlelib.colorizer import ColorDelegator
 from idlelib.config import idleConf
@@ -40,7 +39,7 @@ from idlelib import debugger
 from idlelib import debugger_r
 from idlelib.editor import EditorWindow, fixwordbreaks
 from idlelib.filelist import FileList
-from idlelib.outwin import OutputWindow, file_line_helper
+from idlelib.outwin import OutputWindow
 from idlelib import replace
 from idlelib import rpc
 from idlelib.run import idle_formatwarning, StdInputFile, StdOutputFile
@@ -130,7 +129,6 @@ class PyShellEditorWindow(EditorWindow):
         EditorWindow.__init__(self, *args)
         self.text.bind("<<set-breakpoint>>", self.set_breakpoint_event)
         self.text.bind("<<clear-breakpoint>>", self.clear_breakpoint_event)
-        self.text.bind("<<predict-error>>", self.predict_error_event)
         self.text.bind("<<open-python-shell>>", self.flist.open_shell)
 
         #TODO: don't read/write this from/to .idlerc when testing
@@ -152,8 +150,7 @@ class PyShellEditorWindow(EditorWindow):
         ("Paste", "<<paste>>", "rmenu_check_paste"),
         (None, None, None),
         ("Set Breakpoint", "<<set-breakpoint>>", None),
-        ("Clear Breakpoint", "<<clear-breakpoint>>", None),
-        ("Predict Error Line", "<<predict-error>>", None)
+        ("Clear Breakpoint", "<<clear-breakpoint>>", None)
     ]
 
     def color_breakpoint_text(self, color=True):
@@ -209,10 +206,6 @@ class PyShellEditorWindow(EditorWindow):
             debug.clear_breakpoint(filename, lineno)
         except:
             pass
-        
-    def predict_error_event(self, event=None):
-        self.flist.pyshell.predicterror()
-        self.text.focus_set()
 
     def clear_file_breaks(self):
         if self.breakpoints:
@@ -877,6 +870,7 @@ class PyShell(OutputWindow):
     del _idx
 
     allow_line_numbers = False
+    allow_manual_debug = False
     user_input_insert_tags = "stdin"
 
     # New classes
@@ -898,7 +892,6 @@ class PyShell(OutputWindow):
         self.shell_sidebar = None  # initialized below
 
         OutputWindow.__init__(self, flist, None, None)
-        self.text.tag_configure('traceback_lineno', underline=True, foreground='red') # added a tag for the traceback
 
         self.usetabs = False
         # indentwidth must be 8 when using tabs.  See note in EditorWindow:
@@ -1422,44 +1415,18 @@ class PyShell(OutputWindow):
         self.ctip.remove_calltip_window()
 
     def write(self, s, tags=()):
-        traceback_line_re = re.compile(r'(  File ".*?", )(line \d+)(, in .*)')
-        lines = s.splitlines(keepends=True)
-        for line in lines:
-            trace_match = traceback_line_re.match(line)
-            if trace_match:
-                file_part, line_part, context_part = trace_match.groups()
-                self.text.insert('end', file_part, tags)
-                self.text.insert('end', line_part, ('traceback_lineno',))
-                self.text.insert('end', context_part + ('\n' if line.endswith('\n') else ''), tags)
-            else:
-                self.text.insert('end', line, tags)
-        self.text.see('end')
-        count = len(s)
+        try:
+            self.text.mark_gravity("iomark", "right")
+            count = OutputWindow.write(self, s, tags, "iomark")
+            self.text.mark_gravity("iomark", "left")
+        except:
+            raise ###pass  # ### 11Aug07 KBK if we are expecting exceptions
+                           # let's find out what they are and be specific.
         if self.canceled:
             self.canceled = False
             if not use_subprocess:
                 raise KeyboardInterrupt
         return count
-    
-    def predicterror(self):
-        """Identify last line of the stack trace and take user to it"""
-        traceback_text = self.text.get("1.0", "end-1c")
-        lines = traceback_text.splitlines()
-        for line in reversed(lines):
-            if line.strip().startswith("File") and "line" in line:
-                result = file_line_helper(line)
-                if not result:
-                    break
-                filename, lineno = result
-                self.flist.gotofileline(filename, lineno)
-
-                return
-        self.showerror(
-            "Error Line Prediction Failed",
-            "Running the code may increase prediction ability\n\n"
-            "But sometimes you have to debug for yourself :(",
-            parent=self.text)
-        return
 
     def rmenu_check_cut(self):
         try:

@@ -61,6 +61,7 @@ class EditorWindow:
     from idlelib.calltip import Calltip
     from idlelib.codecontext import CodeContext
     from idlelib.sidebar import LineNumbers
+    from idlelib.manualdebug import ManualDebug
     from idlelib.format import FormatParagraph, FormatRegion, Indents, Rstrip
     from idlelib.parenmatch import ParenMatch
     from idlelib.zoomheight import ZoomHeight
@@ -70,6 +71,7 @@ class EditorWindow:
 
     allow_code_context = True
     allow_line_numbers = True
+    allow_manual_debug = True
     user_input_insert_tags = None
 
     def __init__(self, flist=None, filename=None, key=None, root=None):
@@ -364,6 +366,10 @@ class EditorWindow:
             text.bind("<<toggle-line-numbers>>", self.toggle_line_numbers_event)
         else:
             self.update_menu_state('options', '*ine*umbers', 'disabled')
+        if self.allow_manual_debug:
+            text.bind("<<open-manual-debug>>", lambda event: self.ManualDebug(self.text))
+        else:
+            self.update_menu_state('options', '*anual*ebugger', 'disabled')
 
     def handle_winconfig(self, event=None):
         self.set_width()
