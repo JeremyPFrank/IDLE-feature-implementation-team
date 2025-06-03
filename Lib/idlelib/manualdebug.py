@@ -11,6 +11,7 @@ from tkinter.ttk import (Frame, Notebook, Scrollbar, Button)
 from idlelib import macosx
 from tkinter import Text, END
 from tkinter import StringVar, Entry, Label
+from idlelib.query import Query
 
 class ManualDebug(Toplevel):
     """Opens Manual Print Statement Debug Window to set print statments
@@ -43,6 +44,7 @@ class ManualDebug(Toplevel):
         self.create_widgets()
         self.resizable(height=FALSE, width=FALSE)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.print_statements = {}
         
         if not _utest:
             self.wm_deiconify()
@@ -84,7 +86,8 @@ class ManualDebug(Toplevel):
         self.buttons = {}
         for txt, cmd in (
             ('Apply', self.apply),
-            ('Unapply', self.cancel)):
+            ('Unapply', self.cancel),
+            ('See Current Lines', self.show_current)):
             self.buttons[txt] = Button(buttons_frame, text=txt, command=cmd,
                        takefocus=FALSE, **padding_args)
             self.buttons[txt].pack(side=LEFT, padx=5)
@@ -96,7 +99,15 @@ class ManualDebug(Toplevel):
     def output_message(self, message):
         """Insert message into the output window."""
         self.output_text.config(state="normal")
-        self.output_text.insert(END, message + "\n", "debug_blue")
+        self.output_text.delete(1.0, END)
+        if message:
+            self.output_text.insert(END, message + "\n", "debug_blue")
+            return
+        self.output_text.insert(END, "Current Print Statements at Lines:" + "\n", "debug_blue")
+        for line in self.print_statements:
+            if self.print_statements[line]:
+                self.output_text.insert(END, str(line) + ": \"" + self.print_statements[line] + "\"\n", "debug_blue")
+        
         self.output_text.see(END)
         self.output_text.config(state="disabled")
 
@@ -108,25 +119,34 @@ class ManualDebug(Toplevel):
             return True
         return False
 
+    def show_current(self):
+        """Call Output_message with 'None' argument which displays full list of print statements"""
+        self.output_message(None)
+
     def apply(self):
         """Apply print statements and display output in the window."""
         line_text = self.line_var.get()
+        print_contents = Query(self.frame, "Printed Message", "What would you like to print on line(s) " + line_text + "?").result
         for line in line_text.split(","):
             lineno = line.strip()
-            if self.check_line(lineno):
-                self.output_message("Line "+ lineno + ": applied!")
-            else:
+            if lineno in self.print_statements and self.print_statements[lineno] != None:
+                self.output_message("Statement on line: " + lineno + " already exists")
+            elif not self.check_line(lineno):
                 self.output_message("Invalid line number: " + lineno)
+            else:
+                self.print_statements[lineno] = print_contents
+                self.output_message(None)
 
     def cancel(self):
         """Unapply print statements from showing in the debug output."""
         line_text = self.line_var.get()
         for line in line_text.split(","):
             lineno = line.strip()
-            if self.check_line(lineno):
-                self.output_message("Line "+ lineno + ": unapplied!")
+            if lineno not in self.print_statements or self.print_statements[lineno] == None:
+                self.output_message("No print statment at " + lineno + " to remove")      
             else:
-                self.output_message("Invalid line number: " + lineno)
+                self.print_statements[lineno] = None
+                self.output_message(None)
 
     def destroy(self):
         self.grab_release()
