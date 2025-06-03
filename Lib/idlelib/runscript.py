@@ -106,6 +106,27 @@ class ScriptBinding:
         finally:
             shell.set_warning_stream(saved_stream)
 
+    def debug_print_change(self, code):
+        """
+        If manual debug is active, replace print statements on selected lines with debug_print,
+        and prepend a debug_print definition that marks output with a special prefix.
+        """
+        manual_debug = getattr(self.editwin, "manual_debug", None)
+        #Check that the debug window is open and it has applied lines
+        if manual_debug and hasattr(manual_debug, "get_applied_lines"):
+            applied_lines = manual_debug.get_applied_lines()
+            if applied_lines:
+                code_lines = code.splitlines()
+                #Go through each line and replace print statements with our custom debug print function
+                for i in applied_lines:
+                    python_i = i - 1 #Code line numbers start at 1, but python indexes start at 0
+                    if python_i >= 0 and python_i < len(code_lines):
+                        line = code_lines[python_i]
+                        if "print(" in line:
+                            code_lines[python_i] = line.replace("print(", "debugprint.debug_print(", 1)
+                return "from idlelib import debugprint; " + "\n".join(code_lines)
+        return code
+
     def run_custom_event(self, event):
         return self.run_module_event(event, customize=True)
 
@@ -130,6 +151,13 @@ class ScriptBinding:
         if not code:
             return 'break'
         if not self.tabnanny(filename):
+            return 'break'
+        with open(filename, "r", encoding="utf-8") as f:
+            code_str = f.read()
+        code_str = self.debug_print_change(code_str)
+        try:
+            code = compile(code_str, filename, "exec")
+        except Exception as error:
             return 'break'
         if customize:
             title = f"Customize {self.editwin.short_title()} Run"
