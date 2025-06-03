@@ -6,9 +6,11 @@ so they've been left in for conviniance (will likely use a scrolling window for 
 """
 from tkinter import (Toplevel, Canvas, TRUE, FALSE,
                      TOP, BOTTOM, RIGHT, LEFT, 
-                     BOTH, Y, NW, VERTICAL)
+                     BOTH, Y, NW, VERTICAL, X)
 from tkinter.ttk import (Frame, Notebook, Scrollbar, Button)
 from idlelib import macosx
+from tkinter import Text, END
+from tkinter import StringVar, Entry, Label
 
 class ManualDebug(Toplevel):
     """Opens Manual Print Statement Debug Window to set print statments
@@ -40,24 +42,26 @@ class ManualDebug(Toplevel):
         self.geometry(f'+{x}+{y}')
         self.create_widgets()
         self.resizable(height=FALSE, width=FALSE)
-        self.transient(self.parent)
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         
         if not _utest:
-            self.grab_set()
             self.wm_deiconify()
-            self.wait_window()
     
     def create_widgets(self):
-        """Create and place widgets for tabbed dialog.
+        """Create and place widgets for the dialog and the large output for prints.
         """
         self.frame = frame = Frame(self, padding=5)
         self.frame.grid(sticky="nwes")
-        self.note = note = Notebook(frame)
 
-        note.enable_traversal()
-        note.pack(side=TOP, expand=TRUE, fill=BOTH)
-        self.create_action_buttons().pack(side=BOTTOM)
+        self.output_text = Text(frame, height=15, width=60, wrap="word", state="disabled")
+        self.output_text.grid(row=0, column=0, columnspan=2, sticky="nwes", padx=4, pady=4)
+        self.output_text.tag_configure("debug_blue", foreground="blue")
+        scrollbar = Scrollbar(frame, command=self.output_text.yview)
+        scrollbar.grid(row=0, column=2, sticky="ns")
+        self.output_text['yscrollcommand'] = scrollbar.set
+        self.create_action_buttons().grid(row=1, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
 
     def create_action_buttons(self):
         """Return frame of action buttons for dialog.
@@ -69,11 +73,18 @@ class ManualDebug(Toplevel):
         else:
             padding_args = {'padding': (6, 3)}
         outer = Frame(self.frame, padding=2)
+
+        self.line_var = getattr(self, "line_var", StringVar(self))
+        line_frame = Frame(outer)
+        Label(line_frame, text="Comma-separated debug lines:").pack(side=LEFT)
+        self.line_entry = Entry(line_frame, textvariable=self.line_var, width=20)
+        self.line_entry.pack(side=LEFT)
+        line_frame.pack(side=TOP, pady=4)
         buttons_frame = Frame(outer, padding=2)
         self.buttons = {}
         for txt, cmd in (
             ('Apply', self.apply),
-            ('Cancel', self.cancel)):
+            ('Unapply', self.cancel)):
             self.buttons[txt] = Button(buttons_frame, text=txt, command=cmd,
                        takefocus=FALSE, **padding_args)
             self.buttons[txt].pack(side=LEFT, padx=5)
@@ -82,18 +93,40 @@ class ManualDebug(Toplevel):
         buttons_frame.pack(side=BOTTOM)
         return outer
 
+    def output_message(self, message):
+        """Insert message into the output window."""
+        self.output_text.config(state="normal")
+        self.output_text.insert(END, message + "\n", "debug_blue")
+        self.output_text.see(END)
+        self.output_text.config(state="disabled")
+
+    def check_line(self, lineno):
+        """Check for valid line numbers in the debug window text box.
+        Text must be a valid line number in the code."""
+        max_lines = int(self.parent.index('end-1c').split('.')[0])
+        if lineno.isdigit() and int(lineno) >= 1 and int(lineno) <= max_lines:
+            return True
+        return False
+
     def apply(self):
-        """Apply print statements and close dialog."""
-        #add code to apply invisible print statements
-        self.destroy()
+        """Apply print statements and display output in the window."""
+        line_text = self.line_var.get()
+        for line in line_text.split(","):
+            lineno = line.strip()
+            if self.check_line(lineno):
+                self.output_message("Line "+ lineno + ": applied!")
+            else:
+                self.output_message("Invalid line number: " + lineno)
 
     def cancel(self):
-        """Dismiss config dialog.
-
-        Methods:
-            destroy: inherited
-        """
-        self.destroy()
+        """Unapply print statements from showing in the debug output."""
+        line_text = self.line_var.get()
+        for line in line_text.split(","):
+            lineno = line.strip()
+            if self.check_line(lineno):
+                self.output_message("Line "+ lineno + ": unapplied!")
+            else:
+                self.output_message("Invalid line number: " + lineno)
 
     def destroy(self):
         self.grab_release()
