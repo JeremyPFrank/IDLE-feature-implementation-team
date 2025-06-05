@@ -810,11 +810,10 @@ class ModifiedInterpreter(InteractiveInterpreter):
     def write(self, s, tags=()):
         try:
             if s.startswith("__DEBUG__:"):
-                #If the string starts with "__DEBUG__:" then we know it's from debug_print
-                #Send it to the debug window and hide it from shell output
                 from idlelib.manualdebug import open_manual_debug_windows
                 for debug_win in list(open_manual_debug_windows):
-                    debug_win.output_message(s[len("__DEBUG__:"):].lstrip())
+                    if hasattr(debug_win, 'print_debug_message'):
+                        debug_win.print_debug_message(s[len("__DEBUG__:"):].lstrip())
                 return #Do not print to shell
         except Exception:
             return
@@ -1434,16 +1433,14 @@ class PyShell(OutputWindow):
         self.ctip.remove_calltip_window()
 
     def write(self, s, tags=()):
-        # Manual Debug: Intercept debug_print output
         try:
             if s.startswith("__DEBUG__:"):
                 from idlelib.manualdebug import open_manual_debug_windows
                 for debug_win in list(open_manual_debug_windows):
-                    debug_win.output_message(s[len("__DEBUG__:"):].lstrip())
-                # Always suppress debug output from the shell, even if no debug window is found
-                return  # Do not print to shell
+                    if hasattr(debug_win, 'print_debug_message'):
+                        debug_win.print_debug_message(s[len("__DEBUG__:"):].lstrip())
+                return #Do not print to shell
         except Exception:
-            # Even on error, suppress debug output from the shell
             return
         try:
             self.text.mark_gravity("iomark", "right")

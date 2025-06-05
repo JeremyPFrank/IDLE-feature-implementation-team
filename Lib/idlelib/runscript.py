@@ -108,22 +108,33 @@ class ScriptBinding:
 
     def debug_print_change(self, code):
         """
-        If manual debug is active, replace print statements on selected lines with debug_print,
-        and prepend a debug_print definition that marks output with a special prefix.
+        Add a print statement with the given string directly below line numbers.
         """
+        #First check that the debug window is open and has print statements
         manual_debug = getattr(self.editwin, "manual_debug", None)
-        #Check that the debug window is open and it has applied lines
-        if manual_debug and hasattr(manual_debug, "get_applied_lines"):
-            applied_lines = manual_debug.get_applied_lines()
-            if applied_lines:
+        if manual_debug and hasattr(manual_debug, "print_statements"):
+            print_statements = manual_debug.print_statements
+            if print_statements:
                 code_lines = code.splitlines()
-                #Go through each line and replace print statements with our custom debug print function
-                for i in applied_lines:
-                    python_i = i - 1 #Code line numbers start at 1, but python indexes start at 0
-                    if python_i >= 0 and python_i < len(code_lines):
-                        line = code_lines[python_i]
-                        if "print(" in line:
-                            code_lines[python_i] = line.replace("print(", "debugprint.debug_print(", 1)
+                #Loop through all line numbers and add the prints below them
+                for lineno_str in sorted(print_statements, key=lambda x: int(x), reverse=True):
+                    msg = print_statements[lineno_str]
+                    if msg is not None:
+                        python_i = int(lineno_str) - 1 #Python index starts at 0 while code line numbers start at 1
+                        if python_i >= 0 and python_i < len(code_lines):
+                            line = code_lines[python_i]
+                            base_indent = line[:len(line) - len(line.lstrip())]
+                            if line.rstrip().endswith(":"):
+                                #Add one indentation level so the code doesn't syntax error
+                                if "\t" in base_indent:
+                                    extra_indent = "\t"
+                                else:
+                                    extra_indent = " " * 4
+                                indent = base_indent + extra_indent
+                            else:
+                                indent = base_indent
+                            debug_line = f'{indent}debugprint.debug_print({repr(msg)})'
+                            code_lines.insert(python_i + 1, debug_line)
                 return "from idlelib import debugprint; " + "\n".join(code_lines)
         return code
 

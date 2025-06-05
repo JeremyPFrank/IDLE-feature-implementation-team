@@ -11,8 +11,8 @@ from tkinter.ttk import (Frame, Notebook, Scrollbar, Button)
 from idlelib import macosx
 from tkinter import Text, END
 from tkinter import StringVar, Entry, Label
+from idlelib.query import Query
 
-# Global registry for all open ManualDebug windows
 open_manual_debug_windows = set()
 
 class ManualDebug(Toplevel):
@@ -22,11 +22,19 @@ class ManualDebug(Toplevel):
     """
 
     def __init__(self, parent, title='', *, _htest=False, _utest=False):
+        """Show the tabbed dialog for user configuration.
+
+        Args:
+            parent - parent of this dialog
+            title - string which is the title of this popup dialog
+            _htest - bool, change box location when running htest
+            _utest - bool, don't wait_window when running unittest
+        """
         self._utest = _utest
         self.parent = parent
         tk_parent = parent.text if hasattr(parent, 'text') else parent
         Toplevel.__init__(self, tk_parent)
-        setattr(parent, 'manual_debug', self)
+        self.parent = parent
         if _htest:
             parent.instance_dict = {}
         if not _utest:
@@ -39,12 +47,11 @@ class ManualDebug(Toplevel):
         self.create_widgets()
         self.resizable(height=FALSE, width=FALSE)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.print_statements = {}
+        open_manual_debug_windows.add(self)
         
         if not _utest:
             self.wm_deiconify()
-
-        open_manual_debug_windows.add(self)
-        self._applied_lines = set()
     
     def create_widgets(self):
         """Create and place widgets for the dialog and the large output for prints.
@@ -83,67 +90,79 @@ class ManualDebug(Toplevel):
         self.buttons = {}
         for txt, cmd in (
             ('Apply', self.apply),
-            ('Unapply', self.cancel)):
+            ('Unapply', self.cancel),
+            ('See Current Lines', self.show_current)):
             self.buttons[txt] = Button(buttons_frame, text=txt, command=cmd,
                        takefocus=FALSE, **padding_args)
             self.buttons[txt].pack(side=LEFT, padx=5)
-        # Add space above buttons.
         Frame(outer, height=2, borderwidth=0).pack(side=TOP)
         buttons_frame.pack(side=BOTTOM)
         return outer
 
     def output_message(self, message):
-        """Insert message into the output window."""
+        """Outputs applied/unapplied/current lines message into the output window."""
         self.output_text.config(state="normal")
-        self.output_text.insert(END, message + "\n", "debug_blue")
+        self.output_text.delete(1.0, END)
+        if message:
+            self.output_text.insert(END, message + "\n", "debug_blue")
+            self.output_text.see(END)
+            self.output_text.config(state="disabled")
+            return
+        self.output_text.insert(END, "Current Print Statements at Lines:" + "\n", "debug_blue")
+        for line in self.print_statements:
+            if self.print_statements[line]:
+                self.output_text.insert(END, str(line) + ": \"" + self.print_statements[line] + "\"\n", "debug_blue")
+        self.output_text.see(END)
+        self.output_text.config(state="disabled")
+
+    def print_debug_message(self, msg):
+        """Prints a debug message to the debug window"""
+        self.output_text.config(state="normal")
+        self.output_text.insert(END, msg + "\n", "debug_blue")
         self.output_text.see(END)
         self.output_text.config(state="disabled")
 
     def check_line(self, lineno):
         """Check for valid line numbers in the debug window text box.
         Text must be a valid line number in the code."""
-        tkinter_text = self.parent.text if hasattr(self.parent, 'text') else self.parent
-        max_lines = int(tkinter_text.index('end-1c').split('.')[0])
+        max_lines = int(self.parent.text.index('end-1c').split('.')[0])
         if lineno.isdigit() and int(lineno) >= 1 and int(lineno) <= max_lines:
             return True
         return False
 
+    def show_current(self):
+        """Call Output_message with 'None' argument which displays full list of print statements"""
+        self.output_message(None)
+
     def apply(self):
         """Apply print statements and display output in the window."""
         line_text = self.line_var.get()
+        print_contents = Query(self.frame, "Printed Message", "What would you like to print on line(s) " + line_text + "?").result
         for line in line_text.split(","):
             lineno = line.strip()
-            if self.check_line(lineno):
-                self._applied_lines.add(int(lineno))
-                self.output_message("Line "+ lineno + ": applied!")
-            else:
+            if lineno in self.print_statements and self.print_statements[lineno] != None:
+                self.output_message("Statement on line: " + lineno + " already exists")
+            elif not self.check_line(lineno):
                 self.output_message("Invalid line number: " + lineno)
+            else:
+                self.print_statements[lineno] = print_contents
+                self.output_message(None)
 
     def cancel(self):
         """Unapply print statements from showing in the debug output."""
         line_text = self.line_var.get()
         for line in line_text.split(","):
             lineno = line.strip()
-            if self.check_line(lineno):
-                if hasattr(self, '_applied_lines'):
-                    self._applied_lines.discard(int(lineno))
-                self.output_message("Line "+ lineno + ": unapplied!")
+            if lineno not in self.print_statements:
+                self.output_message("No print statment at " + lineno + " to remove")      
             else:
-                self.output_message("Invalid line number: " + lineno)
+                del self.print_statements[lineno]
+                self.output_message(None)
 
     def destroy(self):
         open_manual_debug_windows.discard(self)
-        self._applied_lines.clear()
         self.grab_release()
         super().destroy()
-
-    def get_applied_lines(self):
-        """Returns all applied line numbers for runscript to change."""
-        return getattr(self, '_applied_lines', set())
-
-    def attach_to_editor(self):
-        """Attach this ManualDebug instance to the parent editor for runscript integration."""
-        setattr(self.parent, 'manual_debug', self)
 
 if __name__ == '__main__':
     from unittest import main
