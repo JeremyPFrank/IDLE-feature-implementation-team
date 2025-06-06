@@ -209,7 +209,8 @@ class EditorWindow:
         text.bind("<<del-word-left>>", self.del_word_left)
         text.bind("<<del-word-right>>", self.del_word_right)
         text.bind("<<beginning-of-line>>", self.home_callback)
-        text.bind("<<Modified>>", self.check_syntax_event)
+        text.bind("<KeyRelease>", self.check_syntax_event)
+        text.bind("<ButtonRelease>", self.check_syntax_event)
 
         if flist:
             flist.inversedict[self] = key
