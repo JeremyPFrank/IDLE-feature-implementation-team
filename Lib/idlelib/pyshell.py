@@ -1424,17 +1424,23 @@ class PyShell(OutputWindow):
     def write(self, s, tags=()):
         traceback_line_re = re.compile(r'(  File ".*?", )(line \d+)(, in .*)')
         lines = s.splitlines(keepends=True)
+        text = self.text
+        text.mark_gravity("iomark", "right") # iomark moves right as we insert
+        mark = "iomark"
         for line in lines:
             trace_match = traceback_line_re.match(line)
             if trace_match:
-                file_part, line_part, context_part = trace_match.groups()
-                self.text.insert('end', file_part, tags)
-                self.text.insert('end', line_part, ('traceback_lineno',))
-                self.text.insert('end', context_part + ('\n' if line.endswith('\n') else ''), tags)
+                file_part, line_part, context_part = trace_match.groups() # if this is a traceback line
+                text.insert(mark, file_part, tags)
+                text.insert(f"{mark} + {len(file_part)}c", line_part, ('traceback_lineno',)) # insert line number with underline
+                text.insert(f"{mark} + {len(file_part) + len(line_part)}c", 
+                            context_part + ('\n' if line.endswith('\n') else ''), tags) # insert the rest with normal tags
             else:
-                self.text.insert('end', line, tags)
-        self.text.see('end')
+                text.insert(mark, line, tags) # for other lines insert normally
+            mark = "end-1c" # next insert goes at the end
+        text.see("end")
         count = len(s)
+        text.mark_gravity("iomark", "left") # iomark stays left for user input
         if self.canceled:
             self.canceled = False
             if not use_subprocess:
