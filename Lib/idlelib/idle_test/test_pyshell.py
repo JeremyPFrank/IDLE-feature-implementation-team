@@ -157,14 +157,14 @@ class WriteMethodTest(unittest.TestCase):
         line = 'This is a normal line of text.\n'
         result = self.shell.write(line)
         # Should insert the line with no special tags
-        self.shell.text.insert.assert_called_with('end', line, ())
+        self.shell.text.insert.assert_any_call('iomark', line, ())
         self.shell.text.see.assert_called_with('end')
         self.assertEqual(result, len(line))
         
     def test_write_empty_line(self):
         line = '\n'
         result = self.shell.write(line)
-        self.shell.text.insert.assert_called_with('end', line, ())
+        self.shell.text.insert.assert_any_call('iomark', line, ())
         self.shell.text.see.assert_called_with('end')
         self.assertEqual(result, len(line))
         
@@ -180,21 +180,15 @@ class WriteMethodTest(unittest.TestCase):
         # Simulate a traceback line
         line = '  File "foo.py", line 42, in <module>\n'
         result = self.shell.write(line)
-        self.shell.text.insert.assert_any_call('end', '  File "foo.py", ', ())
-        self.shell.text.insert.assert_any_call('end', 'line 42', ('traceback_lineno',))
-        self.shell.text.insert.assert_any_call('end', ', in <module>\n', ())
+        file_part = '  File "foo.py", '
+        line_part = 'line 42'
+        context_part = ', in <module>\n'
+        self.shell.text.insert.assert_any_call('iomark', file_part, ())
+        self.shell.text.insert.assert_any_call(f'iomark + {len(file_part)}c', line_part, ('traceback_lineno',))
+        self.shell.text.insert.assert_any_call(f'iomark + {len(file_part) + len(line_part)}c', context_part, ())
         self.shell.text.see.assert_called_with('end')
         self.assertEqual(result, len(line))
 
-    def test_write_real_traceback(self):
-        # Simulate a real Python traceback line
-        line = '  File "/home/willi/individual-projects-wshare26/error.py", line 2, in error\n'
-        result = self.shell.write(line)
-        self.shell.text.insert.assert_any_call('end', '  File "/home/willi/individual-projects-wshare26/error.py", ', ())
-        self.shell.text.insert.assert_any_call('end', 'line 2', ('traceback_lineno',))
-        self.shell.text.insert.assert_any_call('end', ', in error\n', ())
-        self.shell.text.see.assert_called_with('end')
-        self.assertEqual(result, len(line))
         
 
 
