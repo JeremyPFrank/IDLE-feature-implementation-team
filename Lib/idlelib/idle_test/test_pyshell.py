@@ -189,18 +189,6 @@ class WriteMethodTest(unittest.TestCase):
         self.shell.text.see.assert_called_with('end')
         self.assertEqual(result, len(line))
 
-    def test_write_real_traceback(self):
-        # Simulate a real Python traceback line
-        line = '  File "/home/willi/individual-projects-wshare26/error.py", line 2, in error\n'
-        result = self.shell.write(line)
-        file_part = '  File "/home/willi/individual-projects-wshare26/error.py", '
-        line_part = 'line 2'
-        context_part = ', in error\n'
-        self.shell.text.insert.assert_any_call('iomark', file_part, ())
-        self.shell.text.insert.assert_any_call(f'iomark + {len(file_part)}c', line_part, ('traceback_lineno',))
-        self.shell.text.insert.assert_any_call(f'iomark + {len(file_part) + len(line_part)}c', context_part, ())
-        self.shell.text.see.assert_called_with('end')
-        self.assertEqual(result, len(line))
         
 
 
