@@ -135,7 +135,7 @@ class OutputWindow(EditorWindow):
         Otherwise, display an error messagebox.
         """
         # update cursor position before analyzing line contents if called with left-click
-        if event.num == 1: # event.num == 1 when function is called with left click
+        if event and event.num == 1: # event.num == 1 when function is called with left click
             self.text.mark_set("insert", f"@{event.x},{event.y}")
 
         #attempt to get file name and line number
@@ -148,7 +148,7 @@ class OutputWindow(EditorWindow):
                                  "insert -1line lineend")
             result = file_line_helper(line)
             if not result:
-                if event.num != 1: 
+                if not event or event.num != 1: 
                     self.showerror(
                         "No special line",
                         "The line you point at doesn't look like "
