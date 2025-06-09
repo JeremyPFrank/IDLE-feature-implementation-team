@@ -129,13 +129,16 @@ class OutputWindow(EditorWindow):
 
     def goto_file_line(self, event=None):
         """Handle request to open file/line.
-
         If the selected or previous line in the output window
         contains a file name and line number, then open that file
         name in a new window and position on the line number.
-
         Otherwise, display an error messagebox.
         """
+        # update cursor position before analyzing line contents if called with left-click
+        if event and event.num == 1: # event.num == 1 when function is called with left click
+            self.text.mark_set("insert", f"@{event.x},{event.y}")
+
+        #attempt to get file name and line number
         line = self.text.get("insert linestart", "insert lineend")
         result = file_line_helper(line)
         if not result:
@@ -145,15 +148,17 @@ class OutputWindow(EditorWindow):
                                  "insert -1line lineend")
             result = file_line_helper(line)
             if not result:
-                self.showerror(
-                    "No special line",
-                    "The line you point at doesn't look like "
-                    "a valid file name followed by a line number.",
-                    parent=self.text)
+                if not event or event.num != 1: 
+                    self.showerror(
+                        "No special line",
+                        "The line you point at doesn't look like "
+                        "a valid file name followed by a line number.",
+                        parent=self.text)
                 return
         filename, lineno = result
-        self.flist.gotofileline(filename, lineno)
-
+        editor_window = self.flist.gotofileline(filename, lineno)
+        if editor_window:
+            editor_window.text.focus_set()
 
 # These classes are currently not used but might come in handy
 class OnDemandOutputWindow:
