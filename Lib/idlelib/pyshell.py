@@ -807,9 +807,27 @@ class ModifiedInterpreter(InteractiveInterpreter):
                 except AttributeError:  # shell may have closed
                     pass
 
-    def write(self, s):
-        "Override base class method"
-        return self.tkconsole.stderr.write(s)
+    def write(self, s, tags=()):
+        try:
+            if s.startswith("__DEBUG__:"):
+                from idlelib.manualdebug import open_manual_debug_windows
+                for debug_win in list(open_manual_debug_windows):
+                    if hasattr(debug_win, 'print_debug_message'):
+                        debug_win.print_debug_message(s[len("__DEBUG__:"):].lstrip())
+                return #Do not print to shell
+        except Exception:
+            return
+        try:
+            self.text.mark_gravity("iomark", "right")
+            count = OutputWindow.write(self, s, tags, "iomark")
+            self.text.mark_gravity("iomark", "left")
+        except:
+            raise
+        if self.canceled:
+            self.canceled = False
+            if not use_subprocess:
+                raise KeyboardInterrupt
+        return count
 
     def display_port_binding_error(self):
         messagebox.showerror(
@@ -1416,12 +1434,20 @@ class PyShell(OutputWindow):
 
     def write(self, s, tags=()):
         try:
+            if s.startswith("__DEBUG__:"):
+                from idlelib.manualdebug import open_manual_debug_windows
+                for debug_win in list(open_manual_debug_windows):
+                    if hasattr(debug_win, 'print_debug_message'):
+                        debug_win.print_debug_message(s[len("__DEBUG__:"):].lstrip())
+                return #Do not print to shell
+        except Exception:
+            return
+        try:
             self.text.mark_gravity("iomark", "right")
             count = OutputWindow.write(self, s, tags, "iomark")
             self.text.mark_gravity("iomark", "left")
         except:
-            raise ###pass  # ### 11Aug07 KBK if we are expecting exceptions
-                           # let's find out what they are and be specific.
+            raise
         if self.canceled:
             self.canceled = False
             if not use_subprocess:
@@ -1582,7 +1608,7 @@ def main():
     elif args:
         enable_edit = True
         pathx = []
-        for filename in args:
+        for filename in args[:]:
             pathx.append(os.path.dirname(filename))
         for dir in pathx:
             dir = os.path.abspath(dir)
