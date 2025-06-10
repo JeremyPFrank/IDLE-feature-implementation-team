@@ -1446,7 +1446,7 @@ class PyShell(OutputWindow):
                 for debug_win in list(open_manual_debug_windows):
                     if hasattr(debug_win, 'print_debug_message'):
                         debug_win.print_debug_message(s[len("__DEBUG__:"):].lstrip())
-                #return #Do not print to shell
+                return #Do not print to shell
         except Exception:
             return
         traceback_line_re = re.compile(r'(  File ".*?", )(line \d+)(, in .*)')
