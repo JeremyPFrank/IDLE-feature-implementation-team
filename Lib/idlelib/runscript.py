@@ -135,7 +135,7 @@ class ScriptBinding:
                                 indent = base_indent
                             debug_line = f'{indent}debugprint.debug_print({repr(msg)})'
                             code_lines.insert(python_i + 1, debug_line)
-                return "from idlelib import debugprint; " + "\n".join(code_lines)
+                return "from idlelib import debugprint\n" + "\n".join(code_lines)
         return code
 
     def run_custom_event(self, event):
