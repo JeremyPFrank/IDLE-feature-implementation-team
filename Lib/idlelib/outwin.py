@@ -110,9 +110,14 @@ class OutputWindow(EditorWindow):
             Length of text inserted.
         """
         assert isinstance(s, str)
-        self.text.insert(mark, s, tags)
-        self.text.see(mark)
-        self.text.update()
+        try:
+            self.text.insert(mark, s, tags)
+            self.text.see(mark)
+            self.text.update()
+        except AttributeError:
+            self.tkconsole.text.insert(mark, s, tags)
+            self.tkconsole.text.see(mark)
+            self.tkconsole.text.update()
         return len(s)
 
     def writelines(self, lines):

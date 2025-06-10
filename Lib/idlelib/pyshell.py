@@ -824,13 +824,13 @@ class ModifiedInterpreter(InteractiveInterpreter):
         except Exception:
             return
         try:
-            self.text.mark_gravity("iomark", "right")
+            self.tkconsole.text.mark_gravity("iomark", "right")
             count = OutputWindow.write(self, s, tags, "iomark")
-            self.text.mark_gravity("iomark", "left")
+            self.tkconsole.text.mark_gravity("iomark", "left")
         except:
             raise
-        if self.canceled:
-            self.canceled = False
+        if self.tkconsole.canceled:
+            self.tkconsole.canceled = False
             if not use_subprocess:
                 raise KeyboardInterrupt
         return count
