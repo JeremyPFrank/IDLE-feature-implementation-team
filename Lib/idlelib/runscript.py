@@ -106,6 +106,38 @@ class ScriptBinding:
         finally:
             shell.set_warning_stream(saved_stream)
 
+    def debug_print_change(self, code):
+        """
+        Add a print statement with the given string directly below line numbers.
+        """
+        #First check that the debug window is open and has print statements
+        manual_debug = getattr(self.editwin, "manual_debug", None)
+        if manual_debug and hasattr(manual_debug, "print_statements"):
+            print_statements = manual_debug.print_statements
+            if print_statements:
+                code_lines = code.splitlines()
+                #Loop through all line numbers and add the prints below them
+                for lineno_str in sorted(print_statements, key=lambda x: int(x), reverse=True):
+                    msg = print_statements[lineno_str]
+                    if msg is not None:
+                        python_i = int(lineno_str) - 1 #Python index starts at 0 while code line numbers start at 1
+                        if python_i >= 0 and python_i < len(code_lines):
+                            line = code_lines[python_i]
+                            base_indent = line[:len(line) - len(line.lstrip())]
+                            if line.rstrip().endswith(":"):
+                                #Add one indentation level so the code doesn't syntax error
+                                if "\t" in base_indent:
+                                    extra_indent = "\t"
+                                else:
+                                    extra_indent = " " * 4
+                                indent = base_indent + extra_indent
+                            else:
+                                indent = base_indent
+                            debug_line = f'{indent}debugprint.debug_print({repr(msg)})'
+                            code_lines.insert(python_i + 1, debug_line)
+                return "from idlelib import debugprint\n" + "\n".join(code_lines)
+        return code
+
     def run_custom_event(self, event):
         return self.run_module_event(event, customize=True)
 
@@ -130,6 +162,13 @@ class ScriptBinding:
         if not code:
             return 'break'
         if not self.tabnanny(filename):
+            return 'break'
+        with open(filename, "r", encoding="utf-8") as f:
+            code_str = f.read()
+        code_str = self.debug_print_change(code_str)
+        try:
+            code = compile(code_str, filename, "exec")
+        except Exception as error:
             return 'break'
         if customize:
             title = f"Customize {self.editwin.short_title()} Run"
