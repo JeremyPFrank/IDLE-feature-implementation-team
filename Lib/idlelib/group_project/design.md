@@ -22,6 +22,14 @@
 
 #### Manual Debugging
 
+- implemented a dialog window in `manualdebug.py` that allows users to add and remove print statements without modifying their code directly
+
+![Manual Debug Diagram](./images/manual_debug_diagram.png)
+
+- implemented line number validation to ensure print statements are only added to valid line numbers, with support for comma-separated multiple line inputs
+
+- implemented a text display area that shows all currently active print statements and their line numbers, with blue text highlighting for better visibility
+
 #### Test Design
 
 ## Design Decisions
