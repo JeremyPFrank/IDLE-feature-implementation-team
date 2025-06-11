@@ -50,7 +50,10 @@ class ManualDebugTest(unittest.TestCase):
 
     def test_check_line(self):
         """Test line number validation."""
-        # Mock the parent's index method
+        self.parent.text = Text(self.parent)
+        # want 5 lines in text
+        for i in range(4):
+            self.parent.text.insert("end","line\n")
         self.parent.index = Mock(return_value="5.0")
 
         # Valid line numbers
@@ -67,19 +70,33 @@ class ManualDebugTest(unittest.TestCase):
         """Test applying print statements."""
         # Mock the parent's index method
         self.parent.index = Mock(return_value="5.0")
+        self.parent.text = Text(self.parent)
+        # want 5 lines in text
+        for i in range(4):
+            self.parent.text.insert("end","line\n")
+        with patch("manualdebug.Query", autospec=True) as MockQuery:
+            MockQuery.return_value.result = "printMe"
+            # Re-create dialog to use the patched Query
+            self.dialog.destroy()
+            self.dialog = ManualDebug(self.parent, _utest=True)
 
-        # Test single valid line
-        self.dialog.line_var.set('1')
-        self.dialog.apply()
-        
-        # Test multiple valid lines
-        self.dialog.line_var.set('2,3')
-        self.dialog.apply()
-        
-        # Test invalid line
-        self.dialog.line_var.set('10')
-        self.dialog.apply()
+            # Test single line
+            self.dialog.line_var.set('1')
+            self.dialog.apply()
+            self.assertIn('1', self.dialog.print_statements)
+            self.assertEqual(self.dialog.print_statements['1'], "printMe")
 
+            # Test multiple lines
+            self.dialog.line_var.set('2,3')
+            self.dialog.apply()
+            self.assertIn('2', self.dialog.print_statements)
+            self.assertIn('3', self.dialog.print_statements)
+
+            # Test invalid line
+            self.dialog.line_var.set('10')
+            self.dialog.apply()
+            self.assertNotIn('10', self.dialog.print_statements)
+    
     def test_cancel(self):
         """Test removing print statements."""
         # Mock the parent's index method
