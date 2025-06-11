@@ -19,26 +19,35 @@ class ManualDebug(Toplevel):
     *Code Adapted from configdialog.py*
     """
 
-    def __init__(self, parent, title=''):
+    def __init__(self, parent, title='', *, _htest=False, _utest=False):
         """Show the tabbed dialog for user configuration.
 
         Args:
             parent - parent of this dialog
             title - string which is the title of this popup dialog
+            _htest - bool, change box location when running htest
+            _utest - bool, don't wait_window when running unittest
         """
+        self._utest = _utest
         self.parent = parent
         tk_parent = parent.text if hasattr(parent, 'text') else parent
         Toplevel.__init__(self, tk_parent)
         self.parent = parent
+        if _htest:
+            parent.instance_dict = {}
+        if not _utest:
+            self.withdraw()
         self.title(title or 'Print Statement Debugger')
         x = tk_parent.winfo_rootx() + 20
-        y = tk_parent.winfo_rooty() + (150)
+        y = tk_parent.winfo_rooty() + (30 if not _htest else 150)
         self.geometry(f'+{x}+{y}')
         self.create_widgets()
         self.resizable(height=FALSE, width=FALSE)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.print_statements = {}
         open_manual_debug_windows.add(self)
+        if not _utest:
+            self.wm_deiconify()
     
     def create_widgets(self):
         """Create and place widgets for the dialog and the large output for prints.
