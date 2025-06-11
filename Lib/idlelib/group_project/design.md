@@ -35,9 +35,6 @@
 
 ![](debug_window_dia.png)
 
-
-#### Test Design
-
 ## Alternative Approach
 
 - An alternative approach to implementing the underlining the line number of the error stack trace could have been modifying `OutputWindow.write` to accept an optional argument indicating whether the text being inserted is a line number in a traceback. By adding this additional argument such as `highlight_lineno=False`we could have conditionally applied the `traceback_lineno` tag inside hte `OutputWindow.write` method itself rather than modifying the `write` method in `pyshell.py`. This would then make it so we wouldn't have one of the bugs we challenged such as having an uninteractive shell or printing duplicate stack traces. This implementation might be more consistent and easier to maintain for the codebase. However, we decided against this because modifying this change would have meant updating all of its call sites and this could have introduced new bugs in other parts of the shell. By keeping our highlighted logic to `pyshell.py` we are able to make a specific change and maintain the expected behavior of the shell.
