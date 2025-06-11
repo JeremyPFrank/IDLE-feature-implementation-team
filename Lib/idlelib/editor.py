@@ -211,7 +211,8 @@ class EditorWindow:
         text.bind("<<del-word-left>>", self.del_word_left)
         text.bind("<<del-word-right>>", self.del_word_right)
         text.bind("<<beginning-of-line>>", self.home_callback)
-        text.bind("<<Modified>>", self.check_syntax_event)
+        text.bind("<KeyRelease>", self.check_syntax_event)
+        text.bind("<ButtonRelease>", self.check_syntax_event)
 
         if flist:
             flist.inversedict[self] = key
@@ -367,7 +368,17 @@ class EditorWindow:
         else:
             self.update_menu_state('options', '*ine*umbers', 'disabled')
         if self.allow_manual_debug:
-            text.bind("<<open-manual-debug>>", lambda event: self.ManualDebug(self.text))
+            #Do this so we can correspond each debug window with the editor window
+            #This is useful for getting the line numbers from the debug window for validation
+            def open_manual_debug(event):
+                if not hasattr(self, 'manual_debug') or self.manual_debug is None:
+                    self.manual_debug = self.ManualDebug(self)
+                else:
+                    try:
+                        self.manual_debug.lift()
+                    except Exception:
+                        self.manual_debug = self.ManualDebug(self)
+            text.bind("<<open-manual-debug>>", open_manual_debug)
         else:
             self.update_menu_state('options', '*anual*ebugger', 'disabled')
 
