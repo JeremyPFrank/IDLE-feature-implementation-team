@@ -22,9 +22,19 @@
 
 #### Manual Debugging
 
+
+- implemented a dialog window in `manualdebug.py` that allows users to add and remove print statements without modifying their code directly
+
+![Manual Debug Diagram](./images/manual_debug_diagram.png)
+
+- implemented line number validation to ensure print statements are only added to valid line numbers, with support for comma-separated multiple line inputs
+
+- implemented a text display area that shows all currently active print statements and their line numbers, with blue text highlighting for better visibility
+
 - To design the base for the ui window for manual debugging, we based the design off of the settings/config menu which inspired and helped lead us to the best classes and functions to use to cleanly create a new pop-up window. We make use of the `Text` and `Frame` classes to create the widget and allow `ManualDebug` to inheirit from `TopLevel` and `BaseWidget` to make use of the `setup()` and `destory()` functions. More elements of UI and functionality implementation can be found below.
 
 ![](debug_window_dia.png)
+
 
 #### Test Design
 
