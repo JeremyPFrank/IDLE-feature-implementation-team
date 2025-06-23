@@ -29,6 +29,7 @@ from idlelib import search
 from idlelib.tree import wheel_event
 from idlelib.util import py_extensions
 from idlelib import window
+from idlelib.calltip_w import CalltipWindow
 
 # The default tab setting for a Text widget, in average-width characters.
 TK_TABWIDTH_DEFAULT = 8
@@ -60,6 +61,7 @@ class EditorWindow:
     from idlelib.calltip import Calltip
     from idlelib.codecontext import CodeContext
     from idlelib.sidebar import LineNumbers
+    from idlelib.manualdebug import ManualDebug
     from idlelib.format import FormatParagraph, FormatRegion, Indents, Rstrip
     from idlelib.parenmatch import ParenMatch
     from idlelib.zoomheight import ZoomHeight
@@ -69,6 +71,7 @@ class EditorWindow:
 
     allow_code_context = True
     allow_line_numbers = True
+    allow_manual_debug = True
     user_input_insert_tags = None
 
     def __init__(self, flist=None, filename=None, key=None, root=None):
@@ -146,6 +149,7 @@ class EditorWindow:
                         'main', 'EditorWindow', 'height', type='int'),
                 }
         self.text = text = MultiCallCreator(Text)(text_frame, **text_options)
+        self.text.tag_configure("error_underline", underline=True, foreground="red")
         self.top.focused_widget = self.text
 
         self.createmenubar()
@@ -207,6 +211,8 @@ class EditorWindow:
         text.bind("<<del-word-left>>", self.del_word_left)
         text.bind("<<del-word-right>>", self.del_word_right)
         text.bind("<<beginning-of-line>>", self.home_callback)
+        text.bind("<KeyRelease>", self.check_syntax_event)
+        text.bind("<ButtonRelease>", self.check_syntax_event)
 
         if flist:
             flist.inversedict[self] = key
@@ -361,6 +367,20 @@ class EditorWindow:
             text.bind("<<toggle-line-numbers>>", self.toggle_line_numbers_event)
         else:
             self.update_menu_state('options', '*ine*umbers', 'disabled')
+        if self.allow_manual_debug:
+            #Do this so we can correspond each debug window with the editor window
+            #This is useful for getting the line numbers from the debug window for validation
+            def open_manual_debug(event):
+                if not hasattr(self, 'manual_debug') or self.manual_debug is None:
+                    self.manual_debug = self.ManualDebug(self)
+                else:
+                    try:
+                        self.manual_debug.lift()
+                    except Exception:
+                        self.manual_debug = self.ManualDebug(self)
+            text.bind("<<open-manual-debug>>", open_manual_debug)
+        else:
+            self.update_menu_state('options', '*anual*ebugger', 'disabled')
 
     def handle_winconfig(self, event=None):
         self.set_width()
@@ -742,6 +762,34 @@ class EditorWindow:
             text.see("insert")
             self.set_line_and_column()
         return "break"
+
+    def check_syntax_event(self, event):
+        self.text.after(4000, self.check_syntax)
+
+    def check_syntax(self):
+        """After text is modified within a 4 second period, this method checks for syntax errors,
+        underlines the problematic line, and displays the error in a calltip window."""
+        source = self.text.get("1.0", "end-1c")
+        file_name = self.io.filename or "" #Make blank if in an unsaved file
+        #Block syntax error checks from occuring if in the shell window
+        if hasattr(self, "write"):
+            return
+        if hasattr(self, 'error_calltip') and self.error_calltip:
+            self.error_calltip.hidetip()
+            self.text.tag_remove("error_underline", "1.0", "end-1c")
+        try:
+            compile(source, file_name, "exec")
+        except SyntaxError as error:
+            error_line = str(error.lineno)
+            error_msg = error.msg
+            line_end = error_line + ".end"
+            line_text = self.text.get(error_line + ".0", line_end)
+            whitespace_offset = int(len(line_text)) - int(len(line_text.lstrip())) 
+            line_start = error_line + "." + str(whitespace_offset)         
+            self.text.tag_add("error_underline", line_start, line_end)
+            self.error_calltip = CalltipWindow(self.text)
+            self.error_calltip.showtip("Syntax error:\n" + error_msg, line_start, line_end)
+        self.text.edit_modified(False) #Allows check_signal_event to be triggered
 
     def open_module(self):
         """Get module name from user and open it.
